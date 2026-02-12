@@ -20,39 +20,26 @@
     state: started
     enabled: yes
 
-- name: Detect CPU vendor and load appropriate KVM module
-  block:
-    - name: Set KVM module name based on CPU vendor facts
-      set_fact:
-        kvm_module: >-
-          {% if 'GenuineIntel' in ansible_processor or 'Intel' in ansible_processor_common_name | default('') %}
-          kvm_intel
-          {% elif 'AuthenticAMD' in ansible_processor or 'AMD' in ansible_processor_common_name | default('') %}
-          kvm_amd
-          {% else %}
-          {% endif %}
+- name: Set KVM module name based on CPU vendor facts
+  set_fact:
+    kvm_module: "{{ 'kvm_intel' if 'Intel' in (ansible_processor | join(' ')) else 'kvm_amd' if 'AMD' in (ansible_processor | join(' ')) else '' }}"
 
-    - name: Fallback to manual check if vendor is still unknown
-      shell: "grep -q vmx /proc/cpuinfo && echo 'kvm_intel' || (grep -q svm /proc/cpuinfo && echo 'kvm_amd' || echo '')"
-      register: cpu_shell_check
-      changed_when: false
-      when: kvm_module == ""
+- name: Load common KVM kernel module
+  modprobe:
+    name: kvm
+    state: present
 
-    - name: Update kvm_module from shell check
-      set_fact:
-        kvm_module: "{{ cpu_shell_check.stdout }}"
-      when: kvm_module == "" and cpu_shell_check.stdout is defined
+- name: Load vendor-specific KVM module
+  modprobe:
+    name: "{{ kvm_module | trim }}"
+    state: present
+  when: kvm_module != ""
 
-    - name: Load common KVM kernel module
-      modprobe:
-        name: kvm
-        state: present
-
-    - name: Load vendor-specific KVM module
-      modprobe:
-        name: "{{ kvm_module }}"
-        state: present
-      when: kvm_module != ""
+- name: Ensure firewalld is running
+  systemd:
+    name: firewalld
+    state: started
+    enabled: yes
 
 - name: Configure Firewalld to allow virtualization traffic
   firewalld:
