@@ -12,6 +12,7 @@
       - virt-install
       - virt-viewer
       - libguestfs-tools
+      - python3-lxml
     state: present
 
 - name: Enable and start libvirtd service
