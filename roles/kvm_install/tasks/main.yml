@@ -64,10 +64,16 @@
         name: tuned
         state: present
 
+    - name: Get current active tuned profile
+      command: tuned-adm active
+      register: tuned_current
+      changed_when: false
+      failed_when: false
+
     - name: Apply virtual-host tuned profile
       command: tuned-adm profile virtual-host
-      register: tuned_result
-      changed_when: "'Current active profile: virtual-host' not in tuned_result.stdout"
+      # On ne l'exécute que si "virtual-host" n'est pas déjà le profil actif
+      when: "'virtual-host' not in tuned_current.stdout"
 
 - name: Validate virtualization capabilities
   command: virt-host-validate qemu
