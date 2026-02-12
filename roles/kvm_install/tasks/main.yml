@@ -1,9 +1,9 @@
 ---
 # Main setup for KVM Hypervisor on AlmaLinux
-- name: Ensure domain_name is specified
-  fail:
-    msg: "Please specify a domain_name using -e 'domain_name=xxx'"
-  when: domain_name is not defined or domain_name == "local.lab"
+#- name: Ensure domain_name is specified
+#  fail:
+#    msg: "Please specify a domain_name using -e 'domain_name=xxx'"
+#  when: domain_name is not defined or domain_name == "local.lab"
 
 - name: Install Virtualization group and management tools
   dnf:
