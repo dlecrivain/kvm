@@ -48,6 +48,14 @@
     state: enabled
     immediate: yes
 
+# --- GESTION VIRBR0 ---
+- name: Completely disable libvirt default network (virbr0)
+  virt_net:
+    name: default
+    state: absent
+    autostart: no
+  ignore_errors: yes
+
 - name: Optimize system performance for virtualization using tuned
   block:
     - name: Install tuned package
@@ -66,10 +74,8 @@
   ignore_errors: yes
   changed_when: false
 
-- name: Report validation status
-  debug:
-    msg: "KVM Validation failed! Check BIOS/VT-x settings."
-  when: virt_val.rc != 0
+- name: Handle Hostname configuration
+  include_tasks: hostname.yml
 
 # --- ALWAYS KEEP NETWORK AT THE END ---
 - name: Handle Network configuration

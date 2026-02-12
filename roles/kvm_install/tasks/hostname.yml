@@ -1,12 +1,12 @@
 ---
 - name: Set the system hostname
   hostname:
-    name: "{{ hostdns }}"
+    name: "{{ hostdns }}.{{ domain_name }}"
 
-- name: Update /etc/hosts with current IP, hostname and domain
+- name: Update /etc/hosts
   lineinfile:
     path: /etc/hosts
-    regexp: "^{{ ansible_facts[interface_name]['ipv4']['address'] }}"
-    line: "{{ ansible_facts[interface_name]['ipv4']['address'] }} {{ hostdns }} {{ hostdns }}.{{ domain_name }}"
+    regexp: "^.*{{ hostdns }}.*$"
+    line: "{{ ansible_host }} {{ hostdns }}.{{ domain_name }} {{ hostdns }}"
     state: present
     backup: yes
