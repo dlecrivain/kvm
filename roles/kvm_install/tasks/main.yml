@@ -4,7 +4,7 @@
   fail:
     msg: "Please specify a domain_name using -e 'domain_name=xxx'"
   when: domain_name is not defined or domain_name == "local.lab"
-  
+
 - name: Install Virtualization group and management tools
   dnf:
     name:
@@ -22,9 +22,26 @@
 
 - name: Detect CPU vendor and load appropriate KVM module
   block:
-    - name: Set KVM module name based on CPU vendor
+    - name: Set KVM module name based on CPU vendor facts
       set_fact:
-        kvm_module: "{{ 'kvm_intel' if ansible_cpu_vendor_id == 'GenuineIntel' else 'kvm_amd' if ansible_cpu_vendor_id == 'AuthenticAMD' else '' }}"
+        kvm_module: >-
+          {% if 'GenuineIntel' in ansible_processor or 'Intel' in ansible_processor_common_name | default('') %}
+          kvm_intel
+          {% elif 'AuthenticAMD' in ansible_processor or 'AMD' in ansible_processor_common_name | default('') %}
+          kvm_amd
+          {% else %}
+          {% endif %}
+
+    - name: Fallback to manual check if vendor is still unknown
+      shell: "grep -q vmx /proc/cpuinfo && echo 'kvm_intel' || (grep -q svm /proc/cpuinfo && echo 'kvm_amd' || echo '')"
+      register: cpu_shell_check
+      changed_when: false
+      when: kvm_module == ""
+
+    - name: Update kvm_module from shell check
+      set_fact:
+        kvm_module: "{{ cpu_shell_check.stdout }}"
+      when: kvm_module == "" and cpu_shell_check.stdout is defined
 
     - name: Load common KVM kernel module
       modprobe:
@@ -36,11 +53,6 @@
         name: "{{ kvm_module }}"
         state: present
       when: kvm_module != ""
-      
-    - name: Log warning if CPU vendor is unknown
-      debug:
-        msg: "Unknown CPU vendor. Loading generic KVM modules only."
-      when: kvm_module == ""
 
 - name: Configure Firewalld to allow virtualization traffic
   firewalld:
