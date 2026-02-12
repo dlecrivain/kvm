@@ -1,7 +1,13 @@
 ---
-- name: Identify target IP (same or new)
+- name: Determine target IP
   set_fact:
-    target_ip: "{{ ansible_default_ipv4.address if hypervisor_ip == 'same' else hypervisor_ip }}"
+    # Si hypervisor_ip est vide (pas spécifié), on prend l'IP actuelle du serveur
+    # Sinon, on utilise la valeur spécifiée
+    target_ip: "{{ hypervisor_ip | default(ansible_default_ipv4.address, true) if hypervisor_ip == '' else hypervisor_ip }}"
+
+- name: Debug target IP
+  debug:
+    msg: "The target IP for cloudbr0 will be: {{ target_ip }}"
 
 - name: Configure cloudbr0 parameters (Static mode)
   nmcli:

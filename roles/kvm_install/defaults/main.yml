@@ -1,6 +1,6 @@
 ---
 # defaults/main.yml
-hypervisor_ip: "same"
+hypervisor_ip: ""
 interface_name: "cloudbr0"
 netmask_prefix: "24"
 gateway: "10.0.1.1"
