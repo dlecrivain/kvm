@@ -1,0 +1,8 @@
+---
+# Main entry point for the infrastructure deployment
+- name: Configure AlmaLinux servers as KVM Hypervisors
+  hosts: hypervisors
+  become: yes  # Run as root/sudo
+  
+  roles:
+    - role: kvm_setup

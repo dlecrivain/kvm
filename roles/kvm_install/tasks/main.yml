@@ -1,0 +1,69 @@
+---
+# Main setup for KVM Hypervisor on AlmaLinux
+
+- name: Install Virtualization group and management tools
+  dnf:
+    name:
+      - "@Virtualization Host" # Installs QEMU, Libvirt, and essential tools
+      - virt-install           # CLI tool to create VMs
+      - virt-viewer            # UI for console access
+      - libguestfs-tools       # Tools for editing VM disk images
+    state: present
+
+- name: Enable and start libvirtd service
+  systemd:
+    name: libvirtd
+    state: started
+    enabled: yes
+
+- name: Detect CPU vendor and load appropriate KVM module
+  block:
+    - name: Set KVM module name based on CPU vendor
+      set_fact:
+        kvm_module: "{{ 'kvm_intel' if 'Intel' in ansible_processor[0] else 'kvm_amd' if 'AMD' in ansible_processor[0] else '' }}"
+
+    - name: Load common KVM kernel module
+      modprobe:
+        name: kvm
+        state: present
+
+    - name: Load vendor-specific KVM module
+      modprobe:
+        name: "{{ kvm_module }}"
+        state: present
+      when: kvm_module != ""
+      
+    - name: Log warning if CPU vendor is unknown
+      debug:
+        msg: "Unknown CPU vendor. Loading generic KVM modules only."
+      when: kvm_module == ""
+
+- name: Configure Firewalld to allow virtualization traffic
+  firewalld:
+    service: libvirt
+    permanent: yes
+    state: enabled
+    immediate: yes
+
+- name: Optimize system performance for virtualization using tuned
+  block:
+    - name: Install tuned package
+      dnf:
+        name: tuned
+        state: present
+
+    - name: Apply virtual-host tuned profile
+      command: tuned-adm profile virtual-host
+      register: tuned_result
+      changed_when: "'Current active profile: virtual-host' not in tuned_result.stdout"
+
+- name: Validate virtualization capabilities
+  command: virt-host-validate qemu
+  register: virt_val
+  ignore_errors: yes
+  changed_when: false
+
+- name: Report validation status
+  debug:
+    msg: "KVM Validation failed! Check BIOS/VT-x settings."
+  when: virt_val.rc != 0
