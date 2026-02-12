@@ -1,15 +1,13 @@
 ---
-# network.yml - Included by main.yml
-
 - name: Identify current IP if 'same' is requested
   set_fact:
     final_ip: "{{ ansible_facts[interface_name]['ipv4']['address'] if hypervisor_ip == 'same' else hypervisor_ip }}"
 
-- name: Apply network configuration via nmcli
+- name: Apply network configuration via nmcli for Bridge
   nmcli:
     conn_name: "{{ interface_name }}"
     ifname: "{{ interface_name }}"
-    type: ethernet
+    type: bridge
     state: present
     method4: "{{ 'auto' if hypervisor_ip == 'dhcp' else 'manual' }}"
     ip4: "{{ (final_ip + '/' + netmask_prefix) if hypervisor_ip != 'dhcp' else omit }}"
@@ -17,8 +15,8 @@
     dns4: "{{ dns_server if hypervisor_ip != 'dhcp' else omit }}"
   register: nm_config
 
-- name: Restart connection to apply changes
+- name: Restart connection if configuration changed
   shell: "sleep 2 && nmcli con up {{ interface_name }}"
-  async: 10   # Run in background to avoid SSH timeout
+  async: 10
   poll: 0
   when: nm_config.changed
