@@ -4,10 +4,10 @@
 - name: Install Virtualization group and management tools
   dnf:
     name:
-      - "@Virtualization Host" # Installs QEMU, Libvirt, and essential tools
-      - virt-install           # CLI tool to create VMs
-      - virt-viewer            # UI for console access
-      - libguestfs-tools       # Tools for editing VM disk images
+      - "@Virtualization Host"
+      - virt-install
+      - virt-viewer
+      - libguestfs-tools
     state: present
 
 - name: Enable and start libvirtd service
@@ -20,7 +20,7 @@
   block:
     - name: Set KVM module name based on CPU vendor
       set_fact:
-        kvm_module: "{{ 'kvm_intel' if 'Intel' in ansible_processor[0] else 'kvm_amd' if 'AMD' in ansible_processor[0] else '' }}"
+        kvm_module: "{{ 'kvm_intel' if ansible_cpu_vendor_id == 'GenuineIntel' else 'kvm_amd' if ansible_cpu_vendor_id == 'AuthenticAMD' else '' }}"
 
     - name: Load common KVM kernel module
       modprobe:
@@ -67,3 +67,7 @@
   debug:
     msg: "KVM Validation failed! Check BIOS/VT-x settings."
   when: virt_val.rc != 0
+
+# --- ALWAYS KEEP NETWORK AT THE END ---
+- name: Handle Network configuration
+  include_tasks: network.yml

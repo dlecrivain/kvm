@@ -5,4 +5,4 @@
   become: yes  # Run as root/sudo
   
   roles:
-    - role: kvm_setup
+    - role: kvm_install
