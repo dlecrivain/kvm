@@ -1,8 +1,13 @@
 ---
 - name: Determine target IP
   set_fact:
-    # Si hypervisor_ip est vide, on prend l'actuelle, sinon on prend la nouvelle
     target_ip: "{{ hypervisor_ip if hypervisor_ip != '' else ansible_default_ipv4.address }}"
+
+- name: Check current cloudbr0 IP
+  command: "ip -4 -o addr show cloudbr0"
+  register: cloudbr0_status
+  changed_when: false
+  failed_when: false
 
 - name: Configure cloudbr0 parameters (Static mode)
   nmcli:
@@ -14,22 +19,13 @@
     dns4: "{{ dns_server }}"
     method4: "manual"
     state: present
+  when: target_ip not in cloudbr0_status.stdout
   register: nmcli_config
 
 - name: Apply network changes and restart cloudbr0
   shell: "sleep 2 && nmcli con up cloudbr0"
   async: 20
   poll: 0
-  # On ne relance l'interface que si nmcli a détecté un changement de config
-  when: nmcli_config.changed
-
-- name: Wait for connection to stabilize (on NEW IP if changed)
-  wait_for_connection:
-    delay: 5
-    timeout: 30
-  # On délègue le test à la machine de déploiement (localhost)
-  # et on force l'adresse sur target_ip
-  delegate_to: localhost
-  vars:
-    ansible_host: "{{ target_ip }}"
-  when: nmcli_config.changed
+  when: 
+    - nmcli_config is defined
+    - nmcli_config.changed
