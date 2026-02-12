@@ -5,3 +5,7 @@ interface_name: "ens33" # Update this with your actual interface (e.g., enp1s0)
 gateway: "10.0.1.1"
 dns_server: "10.0.1.11 10.0.1.12"
 netmask_prefix: "24"
+
+# Hostname settings
+hostdns: "ltestkvm001"
+domain_name: "local.lab"
