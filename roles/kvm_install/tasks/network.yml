@@ -23,11 +23,13 @@
   # On ne relance l'interface que si nmcli a détecté un changement de config
   when: nmcli_config.changed
 
-- name: Wait for connection to stabilize (Only if IP changed)
+- name: Wait for connection to stabilize (on NEW IP if changed)
   wait_for_connection:
     delay: 5
     timeout: 30
-  # Cette tâche ne s'exécute QUE si l'IP cible est différente de l'IP actuelle
-  when: 
-    - nmcli_config.changed
-    - target_ip != ansible_default_ipv4.address
+  # On délègue le test à la machine de déploiement (localhost)
+  # et on force l'adresse sur target_ip
+  delegate_to: localhost
+  vars:
+    ansible_host: "{{ target_ip }}"
+  when: nmcli_config.changed
