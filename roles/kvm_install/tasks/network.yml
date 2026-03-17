@@ -3,9 +3,10 @@
   set_fact:
     target_ip: "{{ hypervisor_ip if hypervisor_ip != '' else ansible_default_ipv4.address }}"
 
-- name: Check current cloudbr0 IP
-  command: "ip -4 -o addr show cloudbr0"
-  register: cloudbr0_status
+- name: Check current nmcli configuration mode
+  # On vérifie si la méthode IPv4 est 'manual' ou 'auto'
+  command: "nmcli -g ipv4.method connection show cloudbr0"
+  register: cloudbr0_method
   changed_when: false
   failed_when: false
 
@@ -17,15 +18,17 @@
     ip4: "{{ target_ip }}/{{ netmask_prefix }}"
     gw4: "{{ gateway }}"
     dns4: "{{ dns_server }}"
-    method4: "manual"
+    method4: "manual" # On force le passage en manuel
     state: present
-  when: target_ip not in cloudbr0_status.stdout
+  # On execute si le mode n'est pas "manual" OU si l'IP n'est pas celle attendue
+  when: >
+    cloudbr0_method.stdout != 'manual' or 
+    target_ip not in ansible_facts['cloudbr0']['ipv4']['address'] | default('')
   register: nmcli_config
 
 - name: Apply network changes and restart cloudbr0
-  shell: "sleep 2 && nmcli con up cloudbr0"
+  shell: "nmcli con up cloudbr0"
   async: 20
   poll: 0
-  when: 
-    - nmcli_config is defined
-    - nmcli_config.changed
+  # Utilise 'default(false)' pour éviter les erreurs si la variable n'existe pas
+  when: nmcli_config.changed | default(false)
